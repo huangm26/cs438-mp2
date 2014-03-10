@@ -1,4 +1,7 @@
 #pragma once
+#include <iostream>
+#include <map>
+
 class node
 {
 public:
@@ -18,6 +21,6 @@ public:
 private:
 	//a linked list of all the neighbors
 	node * neighbors;
-
+	std::map <int, int> costs;
 };
 
