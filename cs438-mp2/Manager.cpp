@@ -1,4 +1,6 @@
 #include "Manager.h"
+#include <stdio.h>
+
 
 
 Manager::Manager()
@@ -14,7 +16,7 @@ Manager::~Manager()
 {
 }
 
-Manager::void readTopologFile()
+int Manager::readTopologFile()
 {
 	FILE * topology_file;
 
@@ -25,7 +27,7 @@ Manager::void readTopologFile()
 	}
 }
 
-Manager::void readMessageFile()
+int Manager::readMessageFile()
 {
 	FILE * message_file;
 

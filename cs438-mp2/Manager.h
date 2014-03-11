@@ -1,15 +1,14 @@
 #pragma once
 #include <stdio.h>
-#include <stdlib.h>
 class Manager
 {
 public:
 	Manager();
 	~Manager();
 	//read the topology file 
-	void readTopologFile();
+	int readTopologFile();
 	//read message file
-	void readMessageFile();
+	int readMessageFile();
 	//listen for node connections
 	void listenConnection();
 	//add topology info from stdin and update the topology
