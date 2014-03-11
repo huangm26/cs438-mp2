@@ -49,15 +49,23 @@
     <Text Include="readme.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Client.h" />
     <ClInclude Include="Manager.h" />
     <ClInclude Include="Message.h" />
     <ClInclude Include="node.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="Server.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Client.cpp" />
     <ClCompile Include="Manager.cpp" />
     <ClCompile Include="Message.cpp" />
     <ClCompile Include="node.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Server.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="cs438-mp2.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
