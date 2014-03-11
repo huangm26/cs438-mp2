@@ -22,5 +22,8 @@ private:
 	//a linked list of all the neighbors
 	node * neighbors;
 	std::map <int, int> costs;
+	int nodeID;
+
+
 };
 
