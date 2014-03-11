@@ -14,7 +14,7 @@ Manager::~Manager()
 {
 }
 
-Manager::readTopologFile()
+Manager::void readTopologFile()
 {
 	FILE * topology_file;
 
@@ -25,7 +25,7 @@ Manager::readTopologFile()
 	}
 }
 
-Manager::readMessageFile()
+Manager::void readMessageFile()
 {
 	FILE * message_file;
 
