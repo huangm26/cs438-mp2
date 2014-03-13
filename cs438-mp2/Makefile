@@ -2,9 +2,9 @@ EXE = Manager
 OBJS = Manager.o
 
 COMPILER = g++
-COMPILER_OPTS = -c -g -O0 -Wall -Werror
+COMPILER_OPTS = -c -g -O0 -Wall -Werror -lpthread
 LINKER = g++
-LINKER_OPTS = -lpng
+LINKER_OPTS = -lpng -lpthread
 
 all : $(EXE)
 

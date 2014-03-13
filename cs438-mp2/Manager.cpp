@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,6 +12,7 @@
 #include <signal.h>
 #include <string.h>
 #include <pthread.h>
+
 #define MAX_NODES			16
 #define MAX_MESSAGE			20
 #define MAX_MESSAGE_SIZE	200
@@ -224,7 +224,8 @@ readTopologFile();
 			s[ID], sizeof s[ID]);
 		printf("server: got connection from %s\n", s[ID]);
 
-		pthread_create(&p_thread[ID], NULL, &manage_thread, NULL);
+		int err = 0;
+		 err = pthread_create(&p_thread[ID], NULL, &manage_thread, NULL);
 		
 
 	}
