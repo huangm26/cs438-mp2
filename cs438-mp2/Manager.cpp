@@ -10,7 +10,6 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
-#include <string.h>
 #include <pthread.h>
 
 #define MAX_NODES			16
