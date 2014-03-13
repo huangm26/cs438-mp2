@@ -20,6 +20,7 @@
 #define PORT "3490"  // the port users will be connecting to
 
 #define BACKLOG 10	 // how many pending connections queue will hold
+using namespace std;
 
 int cost[MAX_NODES][MAX_NODES];
 char messages[MAX_MESSAGE][MAX_MESSAGE_SIZE];
@@ -54,18 +55,23 @@ void* manage_thread(void *identifier){
 	node_info send_info;
 	int ID;
 	for(int i = 0; i < MAX_NODES; i++){
-        send_info.node_id = i;
-		ID = i;
-		break;
+		if(pthread_self() == p_thread[i]){
+			send_info.node_id = i;
+			ID = i;
+			break;
+		}
     	}
 	strcpy(send_info.ip_addr,s[ID]);
 	for(int i = 0; i < MAX_NODES; i++){
 		if(cost[ID][i] != -1){
 			send_info.neighbor_cost[i] = cost[ID][i];
 			strcpy(send_info.neighbor_ip[i],s[i]);
+		}else{
+			send_info.neighbor_cost[i] = -1;
+			send_info.neighbor_ip[i][0] = '\0';
 		}
 	}
-	strcpy(send_info.neighbor_ip[ID],s[ID]);
+
 	send(node_fd[ID], &send_info, sizeof(send_info), 0);
 	while(1);
 	return NULL;
@@ -233,3 +239,4 @@ readTopologFile();
 	return 0;
 
 }
+
