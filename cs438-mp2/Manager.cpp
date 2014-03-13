@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <string.h>
+#include <pthread.h>
 #define MAX_NODES			16
 #define MAX_MESSAGE			20
 #define MAX_MESSAGE_SIZE	200
@@ -50,13 +51,13 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 void* manage_thread(void *identifier){
-	node_info send_info
+	node_info send_info;
 	int ID;
 	for(int i = 0; i < MAX_NODES; i++){
         send_info.node_id = i;
 		ID = i;
 		break;
-    }
+    	}
 	strcpy(send_info.ip_addr,s[ID]);
 	for(int i = 0; i < MAX_NODES; i++){
 		if(cost[ID][i] != -1){
@@ -64,9 +65,10 @@ void* manage_thread(void *identifier){
 			strcpy(send_info.neighbor_ip[i],s[i]);
 		}
 	}
-	strcpy(send_info.node_ip[ID],s[ID]);
+	strcpy(send_info.neighbor_ip[ID],s[ID]);
 	send(node_fd[ID], &send_info, sizeof(send_info), 0);
 	while(1);
+	return NULL;
 }
 
 int readTopologFile()
@@ -100,6 +102,7 @@ int readTopologFile()
 	}
 
 	fclose(topology_file);
+	return 0;
 	
 }
 
@@ -114,7 +117,7 @@ int readMessageFile()
 	}
 
 	for(int i = 0; i < MAX_MESSAGE; i++){
-		messages[i] = NULL;
+		messages[i][0] = '\0';
 	}
 
 	for(int i = 0; i < MAX_MESSAGE; i++){
@@ -123,6 +126,7 @@ int readMessageFile()
 		}
 	}
 	fclose(message_file);
+	return 0;
 }
 
 int main(void){
@@ -207,7 +211,7 @@ readTopologFile();
 		}
 
 		for(int i = 0; i < MAX_NODES; i++){
-			if(space[i] = 0){
+			if(space[i] == 0){
 				ID = i;
 				break;
 			}
