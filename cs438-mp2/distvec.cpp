@@ -7,19 +7,22 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netdb.h>
+
 #define MAXBUFLEN 100
 #define MANAGERPORT 3490
 #define MAX_NODES 16
+#define MAXDATASIZE 1000
+using namespace std;
 
-node * neighbors;
+//node * neighbors;
 std::map <int, int> costs;
 int nodeID;
-char* myIP;
+string myIP;
 int sockfd;
 unsigned portNum;
 char buf[MAXBUFLEN];
@@ -35,6 +38,7 @@ node_info * my_info;
 
 int connectToManager(int argc, char *argv[])
 {
+    /*
     int sockfd, numbytes;
 	char buf[MAXDATASIZE];
 	struct addrinfo hints, *servinfo, *p;
@@ -97,6 +101,7 @@ int connectToManager(int argc, char *argv[])
 	close(sockfd);
 	
 	return 0;
+     */
 }
 
 // get sockaddr, IPv4 or IPv6:
@@ -220,7 +225,7 @@ int sendDataToNode(int destID, string destIP, string message)
     
 	freeaddrinfo(servinfo);
     
-	printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
+	printf("talker: sent %d bytes to %s\n", numbytes, destIP.c_str());
 	close(sockfd);
     return 0;
 }
@@ -283,13 +288,13 @@ int main(int argc, char *argv[])
     }
     
 	printf("printing my ip address \n");
-    cout<<my_info.ip_addr;
+    cout<<my_info->ip_addr;
     
     //assign my ip address
-    myIP = my_info.ip_addr.c_str();
+    myIP = my_info->ip_addr;
     
     //assign my node ID
-    nodeID = my_info.node_id;
+    nodeID = my_info->node_id;
     
     
     
