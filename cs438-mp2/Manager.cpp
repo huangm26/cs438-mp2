@@ -15,7 +15,7 @@
 
 #define MAX_NODES			17
 #define MAX_MESSAGE			20
-#define MAX_MESSAGE_SIZE	200
+#define MAX_MESSAGE_SIZE		200
 
 #define PORT "3490"  // the port users will be connecting to
 
@@ -28,7 +28,9 @@ pthread_t  p_thread[MAX_NODES];      /* thread's structure */
 char s[MAX_NODES][INET6_ADDRSTRLEN];
 int space[MAX_NODES];
 int node_fd[MAX_NODES];
-int count = 0;
+int message_count = 0;
+int tol_nodes = 0;
+int node_count = 0;
 	
 typedef struct node_info{
 	int node_id;
@@ -62,25 +64,38 @@ void* manage_thread(void *identifier){
 			break;
 		}
     	}
-	strcpy(send_info.ip_addr,s[ID]);
-	for(int i = 0; i < MAX_NODES; i++){
+	
+	for(int j = 0; j < INET6_ADDRSTRLEN; j++){
+		send_info.ip_addr[j] = s[ID][j];
+	}
+	//strcpy(send_info.ip_addr,s[ID]);
+	while(1){
+		if(node_count == tol_nodes){
+			break;
+		}	
+	}
+	for(int i = 1; i < MAX_NODES; i++){
 		if(cost[ID][i] != -1){
 			send_info.neighbor_cost[i] = cost[ID][i];
-			strcpy(send_info.neighbor_ip[i],s[i]);
+			for(int j = 0; j < INET6_ADDRSTRLEN; j++){
+				send_info.neighbor_ip[i][j] = s[i][j];
+			}
+			//strcpy(send_info.neighbor_ip[i],s[i]);
+			printf("%s\n", send_info.neighbor_ip[i]);
 		}else{
 			send_info.neighbor_cost[i] = -1;
 			send_info.neighbor_ip[i][0] = '\0';
 		}
 	}
-
+	
 	send(node_fd[ID], &send_info, sizeof(send_info), 0);
 	
-	sleep(5);
+
 
 	while(1){
-		if((int)(messages[count][0]-'0') == ID){
-			send(node_fd[ID], &messages[count], MAX_MESSAGE_SIZE-1, 0);
-			count++;
+		if((int)(messages[message_count][0]-'0') == ID){
+			send(node_fd[ID], &messages[message_count], MAX_MESSAGE_SIZE-1, 0);
+			message_count++;
 		}
 	};
 	return NULL;
@@ -89,7 +104,7 @@ void* manage_thread(void *identifier){
 int readTopologFile()
 {
 	FILE * topology_file;
-	int a, b, c;
+	int a, b, c, d, e, f;
 
 	topology_file = fopen ("topology.txt","r");
 	if(topology_file == NULL){
@@ -105,18 +120,25 @@ int readTopologFile()
 
 	while(1)
 	{
-		a = fscanf(topology_file,"%i", &a);
-		b = fscanf(topology_file,"%i", &b);
-		c = fscanf(topology_file,"%i", &c);
-		if((a == EOF) || (b == EOF) ||(c == EOF)){
+		d = fscanf(topology_file,"%d", &a);
+		e = fscanf(topology_file,"%d", &b);
+		f = fscanf(topology_file,"%d", &c);
+		if((d == EOF) || (e == EOF) ||(f == EOF)){
 			break;
+		}
+		if(a > tol_nodes){
+			tol_nodes = a;
+		}
+		if(b > tol_nodes){
+			tol_nodes = b;
 		}
 		cost[a][b] = c;
 		cost[b][a] = c;
 
 	}
-
+	printf("%i", tol_nodes);
 	fclose(topology_file);
+	//printf("%i", cost[3][0]);
 	return 0;
 	
 }
@@ -140,6 +162,7 @@ int readMessageFile()
 			break;
 		}
 	}
+
 	fclose(message_file);
 	return 0;
 }
@@ -147,6 +170,7 @@ int readMessageFile()
 int main(void){
 	readTopologFile();
 	readMessageFile();
+
 	
 	int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
 	struct addrinfo hints, *servinfo, *p;
@@ -231,17 +255,21 @@ int main(void){
 				break;
 			}
 		}
-
-		space[ID] = 1;
-		node_fd[ID] = new_fd;
+		if(ID <= tol_nodes){
+			node_count++;
+			space[ID] = 1;
+			node_fd[ID] = new_fd;
 		
-		inet_ntop(their_addr.ss_family,
-			get_in_addr((struct sockaddr *)&their_addr),
-			s[ID], sizeof s[ID]);
-		printf("server: got connection from %s\n", s[ID]);
+			inet_ntop(their_addr.ss_family,
+				get_in_addr((struct sockaddr *)&their_addr),
+				s[ID], sizeof s[ID]);
+			printf("server: got connection from %s\n", s[ID]);
 
-		int err = 0;
-		 err = pthread_create(&p_thread[ID], NULL, &manage_thread, NULL);
+			int err = 0;
+			 err = pthread_create(&p_thread[ID], NULL, &manage_thread, NULL);
+		}else{
+			close(new_fd);
+		}
 		
 
 	}

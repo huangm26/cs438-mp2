@@ -12,11 +12,14 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <fcntl.h>
 
 #define MAXBUFLEN 100
 #define MANAGERPORT 3490
-#define MAX_NODES 16
+#define MAX_NODES 17
 #define MAXDATASIZE 1000
+#define MAX_MESSAGE			20
+#define MAX_MESSAGE_SIZE		200
 using namespace std;
 
 //node * neighbors;
@@ -26,21 +29,25 @@ string myIP;
 int sockfd;
 unsigned portNum;
 char buf[MAXBUFLEN];
-/*
-typedef struct node_info{
-    int node_id;
-    string ip_addr;
-    int neighbor_cost[MAX_NODES];
-    string neighborIP[MAX_NODES];
-} node_info;
-*/
+int cost[MAX_NODES][MAX_NODES];
+
+
 typedef struct node_info{
 	int node_id;
 	char ip_addr[INET6_ADDRSTRLEN];
 	int neighbor_cost[MAX_NODES];
 	char neighbor_ip[MAX_NODES][INET6_ADDRSTRLEN];
 } node_info;
+
+typedef struct msg_box{
+	int from_id;
+	int if_message;
+	int send_cost[MAX_NODES];
+	char foward_message[MAX_MESSAGE_SIZE];
+} msg_box;
+
 node_info  my_info;
+
 
 
 
@@ -59,9 +66,9 @@ void *get_in_addr(struct sockaddr *sa)
 
 
 
-int receiveDataFromNode(char* buf)
+int receiveDataFromNode(msg_box* recv_box)
 {
-    int sockfd;
+    	int sockfd;
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 	int numbytes;
@@ -103,35 +110,31 @@ int receiveDataFromNode(char* buf)
     
 	freeaddrinfo(servinfo);
     
-	printf("listener: waiting to recvfrom...\n");
+	//printf("listener: waiting to recvfrom...\n");
     
 	addr_len = sizeof their_addr;
-	if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0,
-                             (struct sockaddr *)&their_addr, &addr_len)) == -1) {
-		perror("recvfrom");
-		exit(1);
+	fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL) | O_NONBLOCK);
+	numbytes = recvfrom(sockfd, recv_box, sizeof(recv_box) , 0,(struct sockaddr *)&their_addr, &addr_len);
+	if(numbytes > 0){
+    		
+		printf("listener: got packet from %s\n", inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr),s, sizeof s));
+		printf("listener: packet is %d bytes long\n", numbytes);
+		buf[numbytes] = '\0';
+		printf("listener: packet contains \"%s\"\n", buf);
 	}
-    
-	printf("listener: got packet from %s\n",
-           inet_ntop(their_addr.ss_family,
-                     get_in_addr((struct sockaddr *)&their_addr),
-                     s, sizeof s));
-	printf("listener: packet is %d bytes long\n", numbytes);
-	buf[numbytes] = '\0';
-	printf("listener: packet contains \"%s\"\n", buf);
     
 	close(sockfd);
     
-	return 0;
+	return numbytes;
 }
 
 
-int sendDataToNode(int destID, string destIP, string message)
+int sendDataToNode(int destID, string destIP, msg_box* message)
 {
     int sockfd;
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
-	int numbytes;
+	//int numbytes;
     	char theirport[100];
 	sprintf(theirport, "%d", destID+5000);
 	
@@ -161,19 +164,26 @@ int sendDataToNode(int destID, string destIP, string message)
 		return 2;
 	}
     
-	if ((numbytes = sendto(sockfd, message.c_str(), strlen(message.c_str()), 0,
-                           p->ai_addr, p->ai_addrlen)) == -1) {
-		perror("talker: sendto");
-		exit(1);
-	}
+
+	sendto(sockfd, message, sizeof(message), 0, p->ai_addr, p->ai_addrlen);
+
+
     
 	freeaddrinfo(servinfo);
     
-	printf("talker: sent %d bytes to %s\n", numbytes, destIP.c_str());
+	//printf("talker: sent %d bytes to %s\n", numbytes, destIP.c_str());
 	close(sockfd);
     return 0;
 }
 
+void print_topo(){
+	for(int i = 1; i < MAX_NODES; i++){
+		for(int j = 1; j < MAX_NODES; j++){
+			printf("%i", cost[i][j]);
+		}
+		printf("\n");
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -243,9 +253,47 @@ int main(int argc, char *argv[])
     
     //assign my node ID
     nodeID = my_info.node_id;
-	printf("my ID is %i\n",nodeID);
-    
+	//char buffer[100];
 	
+	//recv(sockfd, buffer, 100, 0);
+	
+	printf("my ID is %i\n",nodeID);
+    	for(int i = 1; i < MAX_NODES; i++){
+		cost[nodeID][i] = my_info.neighbor_cost[i];
+		if(my_info.neighbor_cost[i] != -1){
+			printf("now linked to node %i with cost %i\n", i, my_info.neighbor_cost[i]);
+			msg_box send_info;
+			send_info.from_id = nodeID;
+			send_info.if_message = 0;
+			for(int j = 0; j < MAX_NODES; j++){
+				send_info.send_cost[j] = my_info.neighbor_cost[j];
+			}
+			printf("sending to %s\n", my_info.neighbor_ip[i]);
+			sendDataToNode(nodeID,my_info.neighbor_ip[i], &send_info);
+		}
+	}
+	
+
+	while(1){
+		msg_box recv_box;
+		if(receiveDataFromNode(&recv_box) > 0){
+			if(recv_box.if_message == 0){
+				for(int i = 1; i < MAX_NODES; i++){
+					if(recv_box.send_cost[i] != -1){
+						cost[recv_box.from_id][i] = recv_box.send_cost[i];
+						cost[i][recv_box.from_id] = recv_box.send_cost[i];
+					}
+				}
+				print_topo();
+			}else{
+				printf("%s", recv_box.foward_message);
+			}
+			
+		}
+		
+	}
 	return 0;
     
 }
+
+
