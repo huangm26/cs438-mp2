@@ -26,13 +26,21 @@ string myIP;
 int sockfd;
 unsigned portNum;
 char buf[MAXBUFLEN];
+/*
 typedef struct node_info{
     int node_id;
     string ip_addr;
     int neighbor_cost[MAX_NODES];
     string neighborIP[MAX_NODES];
 } node_info;
-node_info * my_info;
+*/
+typedef struct node_info{
+	int node_id;
+	char ip_addr[INET6_ADDRSTRLEN];
+	int neighbor_cost[MAX_NODES];
+	char neighbor_ip[MAX_NODES][INET6_ADDRSTRLEN];
+} node_info;
+node_info  my_info;
 
 
 
@@ -125,13 +133,14 @@ int receiveDataFromNode(char* buf)
 	int numbytes;
 	struct sockaddr_storage their_addr;	socklen_t addr_len;
 	char s[INET6_ADDRSTRLEN];
-    
+    	char myport[100];
+	sprintf(myport, "%d", nodeID+5000);
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC; // set to AF_INET to force IPv4
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_PASSIVE; // use my IP
     
-	if ((rv = getaddrinfo(NULL, (int)nodeID+5000, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(NULL, myport, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		return 1;
 	}
@@ -189,14 +198,15 @@ int sendDataToNode(int destID, string destIP, string message)
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 	int numbytes;
-    
+    	char theirport[100];
+	sprintf(theirport, "%d", destID+5000);
 	
     
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
     
-	if ((rv = getaddrinfo(destIP.c_str(), (int)destID+5000, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(destIP.c_str(), theirport, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		return 1;
 	}
@@ -238,7 +248,10 @@ int main(int argc, char *argv[])
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 	char s[INET6_ADDRSTRLEN];
-    
+    	char managerPort[100];
+	sprintf(managerPort, "%d", MANAGERPORT);
+
+
 	if (argc != 2) {
 	    fprintf(stderr,"usage: client hostname\n");
 	    exit(1);
@@ -247,8 +260,8 @@ int main(int argc, char *argv[])
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
-    
-	if ((rv = getaddrinfo(argv[1], MANAGERPORT, &hints, &servinfo)) != 0) {
+    	
+	if ((rv = getaddrinfo(argv[1], managerPort, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		return 1;
 	}
@@ -283,18 +296,19 @@ int main(int argc, char *argv[])
     
     
     //receive my id, my ip address and all the neighbors with their link cost
-    if ((numbytes = recv(sockfd,my_info , sizeof(node_info), 0)) == -1) {
+    if ((numbytes = recv(sockfd,&my_info , sizeof(my_info), 0)) == -1) {
+	printf("receive error \n");
         perror("recv");
     }
     
 	printf("printing my ip address \n");
-    cout<<my_info->ip_addr;
+    cout<<my_info.ip_addr;
     
     //assign my ip address
-    myIP = my_info->ip_addr;
+    myIP = my_info.ip_addr;
     
     //assign my node ID
-    nodeID = my_info->node_id;
+    nodeID = my_info.node_id;
     
     
     
