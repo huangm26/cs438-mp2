@@ -11,8 +11,9 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <pthread.h>
+#include <unistd.h>
 
-#define MAX_NODES			16
+#define MAX_NODES			17
 #define MAX_MESSAGE			20
 #define MAX_MESSAGE_SIZE	200
 
@@ -27,6 +28,7 @@ pthread_t  p_thread[MAX_NODES];      /* thread's structure */
 char s[MAX_NODES][INET6_ADDRSTRLEN];
 int space[MAX_NODES];
 int node_fd[MAX_NODES];
+int count = 0;
 	
 typedef struct node_info{
 	int node_id;
@@ -53,7 +55,7 @@ void *get_in_addr(struct sockaddr *sa)
 void* manage_thread(void *identifier){
 	node_info send_info;
 	int ID;
-	for(int i = 0; i < MAX_NODES; i++){
+	for(int i = 1; i < MAX_NODES; i++){
 		if(pthread_self() == p_thread[i]){
 			send_info.node_id = i;
 			ID = i;
@@ -72,7 +74,15 @@ void* manage_thread(void *identifier){
 	}
 
 	send(node_fd[ID], &send_info, sizeof(send_info), 0);
-	while(1);
+	
+	sleep(5);
+
+	while(1){
+		if((int)(messages[count][0]-'0') == ID){
+			send(node_fd[ID], &messages[count], MAX_MESSAGE_SIZE-1, 0);
+			count++;
+		}
+	};
 	return NULL;
 }
 
@@ -135,7 +145,7 @@ int readMessageFile()
 }
 
 int main(void){
-readTopologFile();
+	readTopologFile();
 	readMessageFile();
 	
 	int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
@@ -146,7 +156,7 @@ readTopologFile();
 	int yes=1;
 	
 	int rv;
-	int ID = 0;
+	int ID = 1;
 	
 	for(int i = 0; i < MAX_NODES; i++){
 		space[i] = 0;
@@ -215,12 +225,13 @@ readTopologFile();
 			continue;
 		}
 
-		for(int i = 0; i < MAX_NODES; i++){
+		for(int i = 1; i < MAX_NODES; i++){
 			if(space[i] == 0){
 				ID = i;
 				break;
 			}
 		}
+
 		space[ID] = 1;
 		node_fd[ID] = new_fd;
 		

@@ -236,23 +236,15 @@ int main(int argc, char *argv[])
     }
     
 	printf("printing my ip address \n");
-    cout<<my_info.ip_addr;
+    printf("my IP address is %s\n", my_info.ip_addr);
     
     //assign my ip address
     myIP = my_info.ip_addr;
     
     //assign my node ID
     nodeID = my_info.node_id;
+	printf("my ID is %i\n",nodeID);
     
-    
-    
-    
-    //////////////////revceive  in the loop
-    
-    //////////////////////////
-	//send the message to server
-	send(sockfd, "abc", 20, 0);
-	close(sockfd);
 	
 	return 0;
     
