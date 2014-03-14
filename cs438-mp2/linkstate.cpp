@@ -37,11 +37,15 @@ typedef struct node_info{
 	char ip_addr[INET6_ADDRSTRLEN];
 	int neighbor_cost[MAX_NODES];
 	char neighbor_ip[MAX_NODES][INET6_ADDRSTRLEN];
+	bool isMessage;
+	int to;
+	char messages[MAX_MESSAGE_SIZE];
 } node_info;
 
 typedef struct msg_box{
 	int from_id;
 	int if_message;
+	int if_new_cost;
 	int send_cost[MAX_NODES];
 	char foward_message[MAX_MESSAGE_SIZE];
 } msg_box;
@@ -165,7 +169,10 @@ int sendDataToNode(int destID, string destIP, msg_box* message)
 	}
     
 
-	sendto(sockfd, message, sizeof(message), 0, p->ai_addr, p->ai_addrlen);
+	if(sendto(sockfd, message, sizeof(message), 0, p->ai_addr, p->ai_addrlen) == -1){
+		perror("talker: sendto");
+		exit(1);
+	}
 
 
     
@@ -187,7 +194,7 @@ void print_topo(){
 
 int main(int argc, char *argv[])
 {
-    int sockfd, numbytes;
+    int sockfd;
 	//char buf[MAXDATASIZE];
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
@@ -239,23 +246,18 @@ int main(int argc, char *argv[])
 	freeaddrinfo(servinfo); // all done with this structure
     
     
-    //receive my id, my ip address and all the neighbors with their link cost
-    if ((numbytes = recv(sockfd,&my_info , sizeof(my_info), 0)) == -1) {
-	printf("receive error \n");
-        perror("recv");
-    }
+    	//receive my id, my ip address and all the neighbors with their link cost
+    	recv(sockfd,&my_info , sizeof(my_info), 0);
     
 	printf("printing my ip address \n");
-    printf("my IP address is %s\n", my_info.ip_addr);
+    	printf("my IP address is %s\n", my_info.ip_addr);
     
-    //assign my ip address
-    myIP = my_info.ip_addr;
+    	//assign my ip address
+    	myIP = my_info.ip_addr;
     
-    //assign my node ID
-    nodeID = my_info.node_id;
-	//char buffer[100];
-	
-	//recv(sockfd, buffer, 100, 0);
+    	//assign my node ID
+    	nodeID = my_info.node_id;
+
 	
 	printf("my ID is %i\n",nodeID);
     	for(int i = 1; i < MAX_NODES; i++){
@@ -268,27 +270,43 @@ int main(int argc, char *argv[])
 			for(int j = 0; j < MAX_NODES; j++){
 				send_info.send_cost[j] = my_info.neighbor_cost[j];
 			}
-			printf("sending to %s\n", my_info.neighbor_ip[i]);
+			//printf("sending to %s\n", my_info.neighbor_ip[i]);
 			sendDataToNode(nodeID,my_info.neighbor_ip[i], &send_info);
 		}
 	}
 	
-
+	fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL) | O_NONBLOCK);
 	while(1){
-		msg_box recv_box;
-		if(receiveDataFromNode(&recv_box) > 0){
-			if(recv_box.if_message == 0){
-				for(int i = 1; i < MAX_NODES; i++){
-					if(recv_box.send_cost[i] != -1){
-						cost[recv_box.from_id][i] = recv_box.send_cost[i];
-						cost[i][recv_box.from_id] = recv_box.send_cost[i];
-					}
-				}
-				print_topo();
-			}else{
-				printf("%s", recv_box.foward_message);
+		/*msg_box recv_box;
+		if(recv(sockfd,&recv_box , sizeof(recv_box), 0) > 0){
+			if(recv_box.if_message == 1){
+
+			}else if(recv_box.if_new_cost == 1){
+				
 			}
+		}*/
+		time_t start = time(NULL);
+		time_t time_out = 5;
+		while(1){
+			if(time(NULL) > start+time_out){
+				break;
+			}
+			msg_box recv_box;
+			if(receiveDataFromNode(&recv_box) > 0){
+				printf("there is message comming\n");
+				if(recv_box.if_message == 0){
+					for(int i = 1; i < MAX_NODES; i++){
+						if(recv_box.send_cost[i] != -1){
+							cost[recv_box.from_id][i] = recv_box.send_cost[i];
+							cost[i][recv_box.from_id] = recv_box.send_cost[i];
+						}
+					}
+					print_topo();
+				}else{
+					printf("%s", recv_box.foward_message);
+				}
 			
+			}
 		}
 		
 	}

@@ -31,12 +31,16 @@ int node_fd[MAX_NODES];
 int message_count = 0;
 int tol_nodes = 0;
 int node_count = 0;
+int converge = 0;
 	
 typedef struct node_info{
 	int node_id;
 	char ip_addr[INET6_ADDRSTRLEN];
 	int neighbor_cost[MAX_NODES];
 	char neighbor_ip[MAX_NODES][INET6_ADDRSTRLEN];
+	bool isMessage;
+	int to;
+	char messages[MAX_MESSAGE_SIZE];
 } node_info;
 
 void sigchld_handler(int s)
@@ -81,7 +85,7 @@ void* manage_thread(void *identifier){
 				send_info.neighbor_ip[i][j] = s[i][j];
 			}
 			//strcpy(send_info.neighbor_ip[i],s[i]);
-			printf("%s\n", send_info.neighbor_ip[i]);
+			//printf("%s\n", send_info.neighbor_ip[i]);
 		}else{
 			send_info.neighbor_cost[i] = -1;
 			send_info.neighbor_ip[i][0] = '\0';
@@ -92,9 +96,25 @@ void* manage_thread(void *identifier){
 	
 
 
+	char a;
+	recv(node_fd[ID], &a, 1, 0);
+	converge++;
+	while(1){
+		if(converge == tol_nodes){
+			break;
+		}
+	}
+
 	while(1){
 		if((int)(messages[message_count][0]-'0') == ID){
-			send(node_fd[ID], &messages[message_count], MAX_MESSAGE_SIZE-1, 0);
+			node_info new_message;
+			new_message.isMessage = true;
+			new_message.to = messages[message_count][3];
+			for(int i = 0; i < MAX_MESSAGE_SIZE-3; i++){
+				new_message.messages[i] = messages[message_count][i+3];
+			}
+			new_message.messages[MAX_MESSAGE_SIZE-1] = '\0';
+			send(node_fd[ID], &new_message, sizeof(new_message), 0);
 			message_count++;
 		}
 	};
@@ -136,7 +156,7 @@ int readTopologFile()
 		cost[b][a] = c;
 
 	}
-	printf("%i", tol_nodes);
+	//printf("%i", tol_nodes);
 	fclose(topology_file);
 	//printf("%i", cost[3][0]);
 	return 0;
