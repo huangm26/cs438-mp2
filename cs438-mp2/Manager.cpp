@@ -37,6 +37,9 @@ int message_count = 0;
 int tol_nodes = 0;
 int node_count = 0;
 int converge[MAX_NODES];
+int std_from = 0;
+int std_to = 0;
+int std_cost = 0;
 	
 typedef struct node_info{
 	int node_id;
@@ -143,7 +146,31 @@ void* manage_thread(void *identifier){
 			send(node_fd[ID], &new_message, sizeof(new_message), 0);
 			message_count++;
 		}
+		if(std_from == ID ){
+			cost[std_from][std_to] = std_cost;
+			cost[std_to][std_from] = std_cost;
+			send_info.isSetup = false;
+			send_info.isNewtopo = true;
+			send_info.isMessage = false;
+
+			send_info.neighbor_cost[std_to] = std_cost;
+			send(node_fd[ID], &send_info, sizeof(send_info), 0);	
+			
+		}else if(std_to == ID){
+			cost[std_from][std_to] = std_cost;
+			cost[std_to][std_from] = std_cost;
+			send_info.isSetup = false;
+			send_info.isNewtopo = true;
+			send_info.isMessage = false
+
+			send_info.neighbor_cost[std_from] = std_cost;
+			send(node_fd[ID], &send_info, sizeof(send_info), 0);
+		}
+		message_count = 0;
+		recv(node_fd[ID], &a, 1, 0);
 	};
+	
+	
 	return NULL;
 }
 
@@ -293,6 +320,9 @@ int main(int argc, char *argv[]){
 	printf("server: waiting for node connections...\n");
 
 	while(1) {  // main accept() loop
+		if(node_count == tol_nodes){
+			break;
+		}
 		sin_size = sizeof their_addr;
 		new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 		if (new_fd == -1) {
@@ -320,10 +350,23 @@ int main(int argc, char *argv[]){
 		}else{
 			close(new_fd);
 		}
-		
+
 
 	}
-
+	while(1){
+		int total = 0;
+		for(int i = 1; i < tol_nodes+1; i++){
+			total += converge[i];
+		}
+		if(total >= tol_nodes){
+			break;
+		}
+	}
+	while(1){
+		printf("Please input new cost:\n");
+		scanf("%i %i %i",std_from, std_to, std_cost);
+	
+	}
 	return 0;
 
 }
