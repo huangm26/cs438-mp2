@@ -12,6 +12,9 @@
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
+//#include <mutex>
+
+
 
 #define MAX_NODES			17
 #define MAX_MESSAGE			20
@@ -22,6 +25,8 @@
 #define BACKLOG 10	 // how many pending connections queue will hold
 using namespace std;
 
+
+
 int cost[MAX_NODES][MAX_NODES];
 char messages[MAX_MESSAGE][MAX_MESSAGE_SIZE];
 pthread_t  p_thread[MAX_NODES];      /* thread's structure */
@@ -31,7 +36,7 @@ int node_fd[MAX_NODES];
 int message_count = 0;
 int tol_nodes = 0;
 int node_count = 0;
-int converge = 0;
+int converge[MAX_NODES];
 	
 typedef struct node_info{
 	int node_id;
@@ -39,8 +44,12 @@ typedef struct node_info{
 	int neighbor_cost[MAX_NODES];
 	char neighbor_ip[MAX_NODES][INET6_ADDRSTRLEN];
 	bool isMessage;
+	bool isSetup;
+	bool isNewtopo;
 	int to;
 	char messages[MAX_MESSAGE_SIZE];
+	int node_num;
+	//int meg[MAX_NODES][MAX_NODES];
 } node_info;
 
 void sigchld_handler(int s)
@@ -72,12 +81,14 @@ void* manage_thread(void *identifier){
 	for(int j = 0; j < INET6_ADDRSTRLEN; j++){
 		send_info.ip_addr[j] = s[ID][j];
 	}
+	send_info.isSetup = true;
 	//strcpy(send_info.ip_addr,s[ID]);
 	while(1){
 		if(node_count == tol_nodes){
 			break;
 		}	
 	}
+	sleep(1);
 	for(int i = 1; i < MAX_NODES; i++){
 		if(cost[ID][i] != -1){
 			send_info.neighbor_cost[i] = cost[ID][i];
@@ -91,29 +102,44 @@ void* manage_thread(void *identifier){
 			send_info.neighbor_ip[i][0] = '\0';
 		}
 	}
-	
+	/*for(int i = 0; i < MAX_NODES; i++){
+		for(int j = 0; j < MAX_NODES; j++){
+			send_info.meg[i][j] = cost[i][j];
+		}
+	}*/
+	send_info.node_num = tol_nodes;
 	send(node_fd[ID], &send_info, sizeof(send_info), 0);
 	
 
-
+	
 	char a;
 	recv(node_fd[ID], &a, 1, 0);
-	converge++;
+	converge[ID] = 1;
 	while(1){
-		if(converge == tol_nodes){
+		int total = 0;
+		for(int i = 1; i < tol_nodes+1; i++){
+			total += converge[i];
+		}
+		if(total >= tol_nodes){
 			break;
 		}
 	}
-
+	printf("node %i think all converged!\n", ID);
+	
 	while(1){
 		if((int)(messages[message_count][0]-'0') == ID){
+			sleep(1);
 			node_info new_message;
 			new_message.isMessage = true;
-			new_message.to = messages[message_count][3];
+			new_message.isSetup = false;
+			new_message.isNewtopo = false;
+			new_message.to = (int)(messages[message_count][2]-'0');
 			for(int i = 0; i < MAX_MESSAGE_SIZE-3; i++){
-				new_message.messages[i] = messages[message_count][i+3];
+				new_message.messages[i] = messages[message_count][i+4];
 			}
 			new_message.messages[MAX_MESSAGE_SIZE-1] = '\0';
+			printf("sending message to %i\n", ID);
+			printf("%s",new_message.messages );
 			send(node_fd[ID], &new_message, sizeof(new_message), 0);
 			message_count++;
 		}
@@ -121,12 +147,12 @@ void* manage_thread(void *identifier){
 	return NULL;
 }
 
-int readTopologFile()
+int readTopologFile(char* name)
 {
 	FILE * topology_file;
 	int a, b, c, d, e, f;
 
-	topology_file = fopen ("topology.txt","r");
+	topology_file = fopen (name,"r");
 	if(topology_file == NULL){
 		perror("Error opening topology file");
 		return -1;
@@ -163,11 +189,11 @@ int readTopologFile()
 	
 }
 
-int readMessageFile()
+int readMessageFile(char* name)
 {
 	FILE * message_file;
 
-	message_file = fopen ("message.txt","r");
+	message_file = fopen (name,"r");
 	if(message_file == NULL){
 		perror("Error opening message file");
 		return -1;
@@ -187,9 +213,13 @@ int readMessageFile()
 	return 0;
 }
 
-int main(void){
-	readTopologFile();
-	readMessageFile();
+int main(int argc, char *argv[]){
+	if (argc != 3) {
+	    fprintf(stderr,"usage: ./Manager topologyfile messagefile\n");
+	    exit(1);
+	}
+	readTopologFile(argv[1]);
+	readMessageFile(argv[2]);
 
 	
 	int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
@@ -204,6 +234,7 @@ int main(void){
 	
 	for(int i = 0; i < MAX_NODES; i++){
 		space[i] = 0;
+		converge[i] = 0;
 	}
 
 	memset(&hints, 0, sizeof hints);
@@ -279,7 +310,6 @@ int main(void){
 			node_count++;
 			space[ID] = 1;
 			node_fd[ID] = new_fd;
-		
 			inet_ntop(their_addr.ss_family,
 				get_in_addr((struct sockaddr *)&their_addr),
 				s[ID], sizeof s[ID]);
